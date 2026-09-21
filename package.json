@@ -1,0 +1,8 @@
+{
+  "name": "youtube-downloader",
+  "private": true,
+  "scripts": {
+    "start": ".venv/bin/python app.py",
+    "setup": "python3 -m venv .venv && .venv/bin/pip install -r requirements.txt"
+  }
+}
