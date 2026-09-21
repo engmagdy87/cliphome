@@ -29,6 +29,7 @@ const mediaButtons = [...document.querySelectorAll("[data-media]")];
 
 let mediaType = "video";
 let playlistScope = "video";
+let stopping = false;
 let currentJobId = null;
 let events = null;
 let batchTotal = 0;
@@ -275,8 +276,23 @@ browseBtn.addEventListener("click", async () => {
 });
 
 cancelBtn.addEventListener("click", async () => {
-  if (!currentJobId) return;
-  await fetch(`/api/downloads/${currentJobId}`, { method: "DELETE" });
+  if (!currentJobId || stopping) return;
+  stopping = true;
+  cancelBtn.disabled = true;
+  setLine("Stopping…");
+  log("Stop requested.");
+  try {
+    const res = await fetch(`/api/downloads/${currentJobId}`, { method: "DELETE" });
+    if (!res.ok) {
+      stopping = false;
+      cancelBtn.disabled = false;
+      setLine(await readError(res), "bad");
+    }
+  } catch (err) {
+    stopping = false;
+    cancelBtn.disabled = false;
+    setLine(err.message || "Could not stop the download.", "bad");
+  }
 });
 
 retryBtn.addEventListener("click", () => {
@@ -317,6 +333,7 @@ async function startDownload() {
   setBar(0);
   setTally("Downloaded 0/0");
   setLine("Starting…");
+  stopping = false;
   setBusy(true);
 
   try {
@@ -359,6 +376,10 @@ function listen(id) {
       showCounts();
       setLine(`Downloading 0 of ${batchTotal}`);
     } else if (event.type === "progress") {
+      if (stopping) {
+        setLine("Stopping…");
+        return;
+      }
       const done = succeeded + failed;
       if (batchTotal && typeof event.percent === "number") {
         setBar(((done + event.percent / 100) / batchTotal) * 100);
@@ -415,6 +436,7 @@ function finish() {
     events = null;
   }
   currentJobId = null;
+  stopping = false;
   setBusy(false);
 }
 

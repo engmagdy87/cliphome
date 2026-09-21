@@ -6,6 +6,10 @@ Living mentor notes for this downloader. Newest inbox first.
 
 ## Inbox
 
+### 2026-09-21 — Stop must acknowledge immediately and interrupt ffmpeg
+
+- A progress hook only runs while yt-dlp is pulling bytes. `subprocess.run(ffmpeg)` for scale/merge does not see `job.cancelled`. Show “Stopping…” on click, emit a log from the DELETE handler, kill the ffmpeg child, and do not `move` the half-finished file.
+
 ### 2026-09-21 — Watch+list is ambiguous; detect and let the user pick
 
 - `/playlist?list=` is a playlist. `/watch?v=` with no list is a video. `/watch?v=&list=` is a video that belongs to a playlist — not automatically the album. Detect the three kinds. Default stays “this video only” (a batch of lesson watch links must not explode into N copies of the same playlist). Offer “whole playlist” which rewrites to `playlist?list=` and dedupes by list id.

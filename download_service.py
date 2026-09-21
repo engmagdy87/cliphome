@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Callable
 
@@ -46,6 +47,36 @@ class DownloadCancelled(Exception):
 
 def plain(message: str) -> str:
     return ANSI_RE.sub("", str(message)).strip()
+
+
+def _run_cancellable(
+    args: list[str],
+    should_cancel: CancelFn,
+) -> subprocess.CompletedProcess[str]:
+    proc = subprocess.Popen(
+        args,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        while proc.poll() is None:
+            if should_cancel():
+                proc.terminate()
+                try:
+                    proc.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait(timeout=2)
+                raise DownloadCancelled("Download cancelled.")
+            time.sleep(0.2)
+        stderr = proc.stderr.read() if proc.stderr else ""
+        return subprocess.CompletedProcess(args, proc.returncode or 0, "", stderr)
+    except DownloadCancelled:
+        raise
+    finally:
+        if proc.poll() is None:
+            proc.kill()
 
 
 def js_runtimes() -> dict[str, dict[str, str]]:
@@ -299,8 +330,12 @@ def _save_one(
             path = _downloaded_path(ydl, info)
         if not path:
             raise RuntimeError("Download finished but the file was not found.")
+        if should_cancel():
+            raise DownloadCancelled("Download cancelled.")
         if media_type == "video":
             path = upscale_if_needed(path, quality, on_event, should_cancel)
+        if should_cancel():
+            raise DownloadCancelled("Download cancelled.")
         return _move_finished(path, dest_dir)
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
@@ -353,30 +388,32 @@ def upscale_if_needed(
         f"scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,"
         f"pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2:black"
     )
-    result = subprocess.run(
-        [
-            ffmpeg,
-            "-y",
-            "-i",
-            str(path),
-            "-vf",
-            scale,
-            "-c:v",
-            "libx264",
-            "-crf",
-            "18",
-            "-preset",
-            "veryfast",
-            "-c:a",
-            "aac",
-            "-b:a",
-            "192k",
-            str(tmp),
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        result = _run_cancellable(
+            [
+                ffmpeg,
+                "-y",
+                "-i",
+                str(path),
+                "-vf",
+                scale,
+                "-c:v",
+                "libx264",
+                "-crf",
+                "18",
+                "-preset",
+                "veryfast",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                str(tmp),
+            ],
+            should_cancel,
+        )
+    except DownloadCancelled:
+        tmp.unlink(missing_ok=True)
+        raise
     if result.returncode != 0:
         tmp.unlink(missing_ok=True)
         on_event({"type": "log", "message": f"Could not scale video: {plain(result.stderr[-400:])}"})

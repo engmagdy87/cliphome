@@ -119,6 +119,7 @@ def cancel_download(job_id: str) -> dict[str, bool]:
     if not job:
         raise HTTPException(status_code=404, detail="Download not found.")
     job.cancelled = True
+    job.emit({"type": "log", "message": "Stop requested. Finishing the current step…"})
     return {"ok": True}
 
 

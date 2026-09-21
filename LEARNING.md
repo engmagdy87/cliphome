@@ -1,5 +1,6 @@
 # Learning log
 
+- 2026-09-21 — Stop: immediate “Stopping…” plus kill ffmpeg scale so the current file is not moved.
 - 2026-09-21 — Detect video vs playlist vs watch+list; optional “whole playlist” from a watch URL.
 - 2026-09-21 — Playlist: create the folder first, then move each finished video in (not wait for the whole list).
 - 2026-09-21 — Night amber theme (gold accent on near-black).
