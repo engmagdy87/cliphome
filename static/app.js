@@ -2,6 +2,7 @@ const KEYS = {
   quality: "ytdl.quality",
   mediaType: "ytdl.mediaType",
   directory: "ytdl.directory",
+  playlistScope: "ytdl.playlistScope",
 };
 
 const COPY_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
@@ -21,9 +22,13 @@ const tallyEl = document.querySelector("#tally");
 const failedEl = document.querySelector("#failed");
 const failedListEl = document.querySelector("#failed-list");
 const logEl = document.querySelector("#log");
+const urlKindEl = document.querySelector("#url-kind");
+const playlistScopeEl = document.querySelector("#playlist-scope");
+const playlistScopeButtons = [...document.querySelectorAll("[data-playlist-scope]")];
 const mediaButtons = [...document.querySelectorAll("[data-media]")];
 
 let mediaType = "video";
+let playlistScope = "video";
 let currentJobId = null;
 let events = null;
 let batchTotal = 0;
@@ -42,6 +47,11 @@ function loadPrefs() {
     setMedia(savedMedia, { persist: false });
   }
   if (directory) directoryEl.value = directory;
+  const savedScope = localStorage.getItem(KEYS.playlistScope);
+  if (savedScope === "video" || savedScope === "playlist") {
+    setPlaylistScope(savedScope, { persist: false });
+  }
+  refreshUrlKind();
 }
 
 function setMedia(next, { persist = true } = {}) {
@@ -57,6 +67,68 @@ function setMedia(next, { persist = true } = {}) {
   if (persist) localStorage.setItem(KEYS.mediaType, next);
 }
 
+function setPlaylistScope(next, { persist = true } = {}) {
+  playlistScope = next;
+  playlistScopeButtons.forEach((btn) => {
+    btn.classList.toggle("is-on", btn.dataset.playlistScope === next);
+  });
+  if (persist) localStorage.setItem(KEYS.playlistScope, next);
+  refreshUrlKind();
+}
+
+function splitUrls(raw) {
+  return raw.replaceAll(",", " ").split(/\s+/).filter(Boolean);
+}
+
+function classifyUrl(raw) {
+  try {
+    const href = raw.includes("://") ? raw : `https://${raw}`;
+    const parsed = new URL(href);
+    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+    if (!host.endsWith("youtube.com") && host !== "youtu.be") return "other";
+    const path = parsed.pathname.toLowerCase();
+    const list = parsed.searchParams.get("list");
+    if (path.includes("playlist") && list) return "playlist";
+    if (list) return "video_in_playlist";
+    return "video";
+  } catch {
+    return "other";
+  }
+}
+
+function refreshUrlKind() {
+  const parts = splitUrls(urlsEl.value);
+  if (!parts.length) {
+    urlKindEl.textContent = "Paste a YouTube link and I’ll say if it’s a video or a playlist.";
+    playlistScopeEl.hidden = true;
+    return;
+  }
+  const kinds = parts.map(classifyUrl);
+  const playlists = kinds.filter((kind) => kind === "playlist").length;
+  const inPlaylist = kinds.filter((kind) => kind === "video_in_playlist").length;
+  const videos = kinds.filter((kind) => kind === "video").length;
+  const other = kinds.filter((kind) => kind === "other").length;
+  const bits = [];
+  if (videos) bits.push(`${videos} video${videos === 1 ? "" : "s"}`);
+  if (playlists) bits.push(`${playlists} playlist${playlists === 1 ? "" : "s"}`);
+  if (inPlaylist) {
+    bits.push(
+      `${inPlaylist} video${inPlaylist === 1 ? "" : "s"} inside a playlist`
+    );
+  }
+  if (other) bits.push(`${other} not recognized`);
+  let extra = "";
+  if (playlists && !inPlaylist) {
+    extra = " Playlist links save into a folder named after the playlist.";
+  } else if (inPlaylist && playlistScope === "playlist") {
+    extra = " Whole playlist is on — I’ll use the list= id and save into a playlist folder.";
+  } else if (inPlaylist) {
+    extra = " That’s a watch link with a playlist. Default is this video only.";
+  }
+  urlKindEl.textContent = `Detected: ${bits.join(", ")}.${extra}`;
+  playlistScopeEl.hidden = inPlaylist === 0;
+}
+
 function setBusy(busy) {
   downloadBtn.disabled = busy;
   cancelBtn.hidden = !busy;
@@ -66,6 +138,9 @@ function setBusy(busy) {
   browseBtn.disabled = busy;
   qualityEl.disabled = busy || mediaType === "audio";
   mediaButtons.forEach((btn) => {
+    btn.disabled = busy;
+  });
+  playlistScopeButtons.forEach((btn) => {
     btn.disabled = busy;
   });
 }
@@ -172,6 +247,12 @@ mediaButtons.forEach((btn) => {
   btn.addEventListener("click", () => setMedia(btn.dataset.media));
 });
 
+playlistScopeButtons.forEach((btn) => {
+  btn.addEventListener("click", () => setPlaylistScope(btn.dataset.playlistScope));
+});
+
+urlsEl.addEventListener("input", refreshUrlKind);
+
 browseBtn.addEventListener("click", async () => {
   browseBtn.disabled = true;
   try {
@@ -201,6 +282,7 @@ cancelBtn.addEventListener("click", async () => {
 retryBtn.addEventListener("click", () => {
   if (!failedUrls.length) return;
   urlsEl.value = failedUrls.join("\n");
+  refreshUrlKind();
   startDownload();
 });
 
@@ -223,6 +305,7 @@ async function startDownload() {
   localStorage.setItem(KEYS.quality, qualityEl.value);
   localStorage.setItem(KEYS.mediaType, mediaType);
   localStorage.setItem(KEYS.directory, directory);
+  localStorage.setItem(KEYS.playlistScope, playlistScope);
 
   showStatus();
   logEl.textContent = "";
@@ -245,6 +328,7 @@ async function startDownload() {
         directory,
         quality: qualityEl.value,
         media_type: mediaType,
+        playlist_scope: playlistScope,
       }),
     });
     if (!res.ok) {

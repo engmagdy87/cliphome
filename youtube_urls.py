@@ -33,11 +33,31 @@ def is_youtube_url(url: str) -> bool:
     return host.endswith(".youtube.com")
 
 
+def list_id(url: str) -> str | None:
+    query = parse_qs(urlparse(normalize(url)).query)
+    values = query.get("list") or []
+    return values[0] if values else None
+
+
 def is_playlist_url(url: str) -> bool:
     parsed = urlparse(normalize(url))
     path = (parsed.path or "").lower()
-    query = parse_qs(parsed.query)
-    return "playlist" in path and bool(query.get("list"))
+    return "playlist" in path and bool(list_id(url))
+
+
+def url_kind(url: str) -> str:
+    if is_playlist_url(url):
+        return "playlist"
+    if list_id(url):
+        return "video_in_playlist"
+    return "video"
+
+
+def to_playlist_url(url: str) -> str:
+    lid = list_id(url)
+    if not lid:
+        return normalize(url)
+    return f"https://www.youtube.com/playlist?list={lid}"
 
 
 def canonical_key(url: str) -> str:
@@ -56,7 +76,7 @@ def canonical_key(url: str) -> str:
     return normalize(url)
 
 
-def validate_urls(raw: str) -> tuple[list[str], list[str]]:
+def validate_urls(raw: str, watch_playlists: bool = False) -> tuple[list[str], list[str]]:
     valid: list[str] = []
     invalid: list[str] = []
     seen: set[str] = set()
@@ -65,6 +85,8 @@ def validate_urls(raw: str) -> tuple[list[str], list[str]]:
         if not is_youtube_url(url):
             invalid.append(part)
             continue
+        if watch_playlists and url_kind(url) == "video_in_playlist":
+            url = to_playlist_url(url)
         key = canonical_key(url)
         if key in seen:
             continue

@@ -6,6 +6,15 @@ Living mentor notes for this downloader. Newest inbox first.
 
 ## Inbox
 
+### 2026-09-21 — Watch+list is ambiguous; detect and let the user pick
+
+- `/playlist?list=` is a playlist. `/watch?v=` with no list is a video. `/watch?v=&list=` is a video that belongs to a playlist — not automatically the album. Detect the three kinds. Default stays “this video only” (a batch of lesson watch links must not explode into N copies of the same playlist). Offer “whole playlist” which rewrites to `playlist?list=` and dedupes by list id.
+
+### 2026-09-21 — Publish each playlist video when that video is done
+
+- List the playlist first (`extract_flat`), mkdir the named folder, then download one video at a time into a temp dir and `move` it in. Finder should show the folder immediately and files appearing one by one. Do not wait to extract the whole playlist as one yt-dlp job — that hides every file until the end.
+- Tally is video count, not “1 playlist URL”. Failed items are the watch URLs so Retry can redo one video.
+
 ### 2026-09-21 — Playlist → one folder named after the playlist
 
 - A `playlist?list=` URL is one album, not a pile of files in the save directory. Create `saveDir / playlistTitle / video.mp4`. Reuse the folder on a second run (`exist_ok`). Watch URLs with `&list=` stay one video unless they paste the playlist link.

@@ -169,6 +169,143 @@ def _playlist_dest(directory: Path, info: dict[str, Any]) -> Path:
     return folder
 
 
+def _video_url_from_entry(entry: dict[str, Any] | None) -> str | None:
+    if not entry:
+        return None
+    for key in ("webpage_url", "original_url", "url"):
+        value = entry.get(key)
+        if isinstance(value, str) and value.startswith("http"):
+            return value
+    vid = entry.get("id")
+    if isinstance(vid, str) and vid:
+        return f"https://www.youtube.com/watch?v={vid}"
+    return None
+
+
+def _list_playlist(
+    url: str,
+    runtimes: dict[str, dict[str, str]],
+    on_event: EventFn,
+    should_cancel: CancelFn,
+) -> tuple[dict[str, Any], list[str]]:
+    if should_cancel():
+        raise DownloadCancelled("Download cancelled.")
+    opts = {
+        "extract_flat": "in_playlist",
+        "skip_download": True,
+        "noplaylist": False,
+        "ignoreerrors": True,
+        "logger": YtLogger(on_event),
+        "no_color": True,
+        "js_runtimes": runtimes,
+        "noprogress": True,
+    }
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+    if not info:
+        raise RuntimeError("Could not read playlist.")
+    videos: list[str] = []
+    seen: set[str] = set()
+    for entry in info.get("entries") or []:
+        video_url = _video_url_from_entry(entry)
+        if not video_url or video_url in seen:
+            continue
+        seen.add(video_url)
+        videos.append(video_url)
+    return info, videos
+
+
+def _expand_jobs(
+    urls: list[str],
+    directory: Path,
+    runtimes: dict[str, dict[str, str]],
+    on_event: EventFn,
+    should_cancel: CancelFn,
+) -> tuple[list[tuple[str, Path]], list[str]]:
+    jobs: list[tuple[str, Path]] = []
+    listing_failed: list[str] = []
+    for url in urls:
+        if should_cancel():
+            raise DownloadCancelled("Download cancelled.")
+        if not is_playlist_url(url):
+            jobs.append((url, directory))
+            continue
+        on_event({"type": "log", "message": f"Listing playlist {url}"})
+        try:
+            info, videos = _list_playlist(url, runtimes, on_event, should_cancel)
+            dest = _playlist_dest(directory, info)
+            on_event({"type": "log", "message": f"Playlist folder: {dest}"})
+            if not videos:
+                raise RuntimeError("Playlist has no videos.")
+            on_event(
+                {
+                    "type": "log",
+                    "message": f"Found {len(videos)} video(s). Each file appears in that folder when it finishes.",
+                }
+            )
+            for video_url in videos:
+                jobs.append((video_url, dest))
+        except DownloadCancelled:
+            raise
+        except Exception as exc:
+            listing_failed.append(url)
+            on_event(
+                {
+                    "type": "log",
+                    "message": f"Failed to list playlist {url}: {plain(str(exc))}",
+                }
+            )
+    return jobs, listing_failed
+
+
+def _save_one(
+    url: str,
+    dest_dir: Path,
+    quality: str,
+    media_type: str,
+    runtimes: dict[str, dict[str, str]],
+    on_event: EventFn,
+    should_cancel: CancelFn,
+    hook: Callable[[dict[str, Any]], None],
+) -> Path:
+    work_dir = Path(tempfile.mkdtemp(prefix="ytdl-"))
+    opts: dict[str, Any] = {
+        "format": VIDEO_FORMATS[quality] if media_type == "video" else "bestaudio/best",
+        "outtmpl": str(work_dir / "%(title)s.%(ext)s"),
+        "noplaylist": True,
+        "progress_hooks": [hook],
+        "logger": YtLogger(on_event),
+        "noprogress": True,
+        "no_color": True,
+        "overwrites": False,
+        "continuedl": True,
+        "restrictfilenames": False,
+        "windowsfilenames": False,
+        "js_runtimes": runtimes,
+    }
+    if media_type == "video":
+        opts["merge_output_format"] = "mp4"
+    else:
+        opts["postprocessors"] = [
+            {
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": "mp3",
+                "preferredquality": "192",
+            }
+        ]
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            path = _downloaded_path(ydl, info)
+        if not path:
+            raise RuntimeError("Download finished but the file was not found.")
+        if media_type == "video":
+            path = upscale_if_needed(path, quality, on_event, should_cancel)
+        return _move_finished(path, dest_dir)
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+
 def _move_finished(path: Path, directory: Path) -> Path:
     name = path.name
     if ".scaling." in name:
@@ -288,8 +425,13 @@ def download(
                 event["percent"] = percent
             on_event(event)
 
-    total = len(urls)
-    on_event({"type": "batch", "total": total, "succeeded": 0, "failed": 0})
+    jobs, listing_failed = _expand_jobs(
+        urls, directory, runtimes, on_event, should_cancel
+    )
+    failed_urls = list(listing_failed)
+    failures = len(listing_failed)
+    total = len(jobs) + failures
+    on_event({"type": "batch", "total": total, "succeeded": 0, "failed": failures})
     on_event(
         {
             "type": "log",
@@ -297,63 +439,36 @@ def download(
         }
     )
 
-    failures = 0
-    failed_urls: list[str] = []
-    for index, url in enumerate(urls, start=1):
+    index = 0
+    for url in listing_failed:
+        index += 1
+        on_event(
+            {
+                "type": "item_fail",
+                "index": index,
+                "total": total,
+                "succeeded": 0,
+                "failed": failures,
+                "url": url,
+            }
+        )
+
+    for url, dest_dir in jobs:
         if should_cancel():
             raise DownloadCancelled("Download cancelled.")
+        index += 1
         on_event({"type": "log", "message": f"[{index}/{total}] {url}"})
-        work_dir = Path(tempfile.mkdtemp(prefix="ytdl-"))
-        opts: dict[str, Any] = {
-            "format": VIDEO_FORMATS[quality] if media_type == "video" else "bestaudio/best",
-            "outtmpl": str(work_dir / "%(title)s.%(ext)s"),
-            "noplaylist": not is_playlist_url(url),
-            "ignoreerrors": is_playlist_url(url),
-            "progress_hooks": [hook],
-            "logger": YtLogger(on_event),
-            "noprogress": True,
-            "no_color": True,
-            "overwrites": False,
-            "continuedl": True,
-            "restrictfilenames": False,
-            "windowsfilenames": False,
-            "js_runtimes": runtimes,
-        }
-        if media_type == "video":
-            opts["merge_output_format"] = "mp4"
-        else:
-            opts["postprocessors"] = [
-                {
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
-                    "preferredquality": "192",
-                }
-            ]
         try:
-            paths: list[Path] = []
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                entries = info.get("entries") if info and info.get("_type") == "playlist" else [info]
-                for entry in entries or []:
-                    if not entry:
-                        continue
-                    path = _downloaded_path(ydl, entry)
-                    if path:
-                        paths.append(path)
-            dest_dir = directory
-            if info and info.get("_type") == "playlist":
-                dest_dir = _playlist_dest(directory, info)
-                on_event(
-                    {
-                        "type": "log",
-                        "message": f"Playlist folder: {dest_dir.name}",
-                    }
-                )
-            finished: list[Path] = []
-            for path in paths:
-                if media_type == "video":
-                    path = upscale_if_needed(path, quality, on_event, should_cancel)
-                finished.append(_move_finished(path, dest_dir))
+            _save_one(
+                url,
+                dest_dir,
+                quality,
+                media_type,
+                runtimes,
+                on_event,
+                should_cancel,
+                hook,
+            )
             succeeded = index - failures
             on_event(
                 {
@@ -385,8 +500,6 @@ def download(
                     "url": url,
                 }
             )
-        finally:
-            shutil.rmtree(work_dir, ignore_errors=True)
 
     succeeded = total - failures
     return {

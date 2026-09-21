@@ -30,6 +30,15 @@
           rows="7"
           placeholder="https://www.youtube.com/watch?v=…&#10;https://www.youtube.com/playlist?list=…&#10;https://youtu.be/…"
         ></textarea>
+        <p class="hint" id="url-kind">Paste a YouTube link and I’ll say if it’s a video or a playlist.</p>
+        <div class="field playlist-scope" id="playlist-scope" hidden>
+          <span class="label">Watch link includes a playlist</span>
+          <div class="seg" role="group" aria-label="Playlist scope">
+            <button type="button" class="seg-btn is-on" data-playlist-scope="video">This video only</button>
+            <button type="button" class="seg-btn" data-playlist-scope="playlist">Whole playlist</button>
+          </div>
+          <p class="hint">Default is this video only. Whole playlist uses the list= id and saves into a folder.</p>
+        </div>
 
         <div class="grid">
           <div class="field grow">

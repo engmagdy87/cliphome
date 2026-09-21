@@ -8,9 +8,9 @@ It is for personal use. YouTube’s terms do not allow downloading everything, s
 
 - One video
 - Several links (new lines or commas)
-- A playlist URL (`youtube.com/playlist?list=…`) — that creates a folder named after the playlist and puts the videos inside it
+- A playlist URL (`youtube.com/playlist?list=…`) — a folder named after the playlist appears as soon as the list is known; each video lands in it when that video finishes
 
-A `watch?v=…&list=…` link is treated as **one video**, not the whole playlist.
+A `watch?v=…&list=…` link is a **video inside a playlist**. The app detects that and lets you choose this video only (default) or the whole playlist.
 
 ## What you can choose
 

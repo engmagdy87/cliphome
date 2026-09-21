@@ -37,6 +37,7 @@ class DownloadRequest(BaseModel):
     directory: str = Field(..., min_length=1)
     quality: str = "1080"
     media_type: Literal["video", "audio"] = "video"
+    playlist_scope: Literal["video", "playlist"] = "video"
 
 
 class Job:
@@ -89,7 +90,10 @@ async def start_download(body: DownloadRequest) -> dict[str, str]:
     if body.media_type not in ALLOWED_MEDIA:
         raise HTTPException(status_code=400, detail="Choose video or audio.")
 
-    valid, invalid = validate_urls(body.urls)
+    valid, invalid = validate_urls(
+        body.urls,
+        watch_playlists=body.playlist_scope == "playlist",
+    )
     if invalid:
         raise HTTPException(
             status_code=400,
