@@ -2,99 +2,65 @@
 
 ## Goal
 
-Local personal video downloader (Cliphome) on this Mac: FastAPI + static UI.
-YouTube, Facebook, and X. GitHub: https://github.com/engmagdy87/cliphome
-Paste video(s) or a playlist, pick an OS folder, cache quality, video default vs audio.
-Stay a local tool; GitHub holds the code.
+Polish Cliphome’s local web UI and docs: light theme, real brand logo, logo-blue Download button, Inter type, clean static assets, fancy README with logo.
 
 ## Done
 
-App: `http://127.0.0.1:8765`. Not the shop API.
-
-Browser-verified early: `https://www.youtube.com/watch?v=jNQXAC9IVRw` as video and MP3 in `tmp-downloads/`.
-
-1:19 PM: all 15 failed
-`No supported JavaScript runtime could be found. Only deno is enabled by default`.
-Node `js_runtimes` + `yt-dlp[default]`. User: "great, works now".
-
-Batch to `/Users/mm/YT Videos`: 14 ok, 1 fail
-`https://www.youtube.com/watch?v=wbAnah83rbo` HTTP 403 format 136+251.
-
-GitHub (on origin):
-- https://github.com/engmagdy87/cliphome **public**
-- `21d65f0` initial; `680bf3c` first HANDOFF; `bb04998` playlist incremental + URL detect
-- No secrets in git
-
-Playlist incremental (local test, not user Finder):
-- `PL7qU_liavgB2kgJJIzRgtn_PRr7zyBO46` → **Prim 1 2023**, 19 videos
-- Folder `/tmp/ytdl-playlist-test2/Prim 1 2023` then `Me at the zoo.mp4`
-
-URL detect (browser `/?detect=1`):
-- `watch?v=0EkGFz-1WDg&list=PLA2Wns-dg9lfsl4TTdrWN784O3upmiHKr` → video inside playlist
-- **Whole playlist** rewrites to `playlist?list=`
-
-User screenshot 3:37 PM: Whole playlist on, Save to `/Users/mm/YT Videos`, Quality Best, **Downloaded 0/6**, log
-`YouTube gave 1152x720. Scaling to 1920x1080 so it fills the player the way the website does.`
-Stop looked dead during that ffmpeg scale.
-
-Import check after Stop code: `from download_service import _run_cancellable, DownloadCancelled` → `ok`.
-User has **not** confirmed Stop in the UI.
+- Light theme live at `http://127.0.0.1:8765` (browser-checked this session). Soft blue-grey page, white panel, dark text.
+- Header uses `static/logo.png` (user-replaced good transparent RGBA wordmark; 1736×494).
+- Download / accent color `#3878f0` (sampled from logo blues); hover `#2f68d8`.
+- UI font: Inter via Google Fonts + system fallbacks; `styles.css?v=light6`.
+- Lede copy kept at `max-width: 54ch` (not full-width) — readability choice confirmed with user.
+- Removed unused `static/favicon.svg`; keep `favicon.ico` + `favicon.png` (C + play mark).
+- Fancy `README.md` with centered logo, badges, tables, quick start (uncommitted).
+- Committed on `main` / `origin/main`: `9823722` — light styles, `logo.png`, favicon ico/png, Inter, blue accent, logo in HTML.
 
 ## In progress
 
-Branch `main`, tracks `origin/main` at `bb04998`.
-Uncommitted (5 files, + this HANDOFF.md):
+Branch: `main` (tracks `origin/main`, up to date for committed work).
 
-- `app.py` — DELETE emits `Stop requested. Finishing the current step…`
-- `download_service.py` — `_run_cancellable` kills ffmpeg; no `move` after cancel
-- `static/app.js` — **Stopping…** immediately; ignore progress while `stopping`
-- `LEARNING.md` / `BACKEND-REFERENCE.md` notes
+Uncommitted (`git diff --stat`):
 
-Seam: yt-dlp’s **own** merge ffmpeg (`[Merger] Merging formats`) is still `subprocess.run` inside yt-dlp. Stop during merge may wait until that merge ends. Our scale ffmpeg is interruptible.
+| Path | Change |
+| :--- | :--- |
+| `README.md` | Fancy rewrite + logo |
+| `static/favicon.svg` | deleted |
+| `static/index.html` | drop `favicon.svg` `<link>` only |
+
+Seam: working tree not committed after asset cleanup + README. UI CSS/logo already on origin at `9823722`.
 
 ## Files
 
-- `app.py` — FastAPI, SSE, `playlist_scope`, cancel emit
-- `download_service.py` — list playlist, `_save_one`, temp merge, upscale, `_run_cancellable`
-- `youtube_urls.py` — `url_kind`, `to_playlist_url`, `validate_urls(..., watch_playlists)`
-- `folder_picker.py` — macOS folder dialog
-- `static/index.html` / `static/app.js` / `static/styles.css` / `static/favicon.svg`
-- `package.json` — `setup` / `start`
-- `requirements.txt` — fastapi, uvicorn, `yt-dlp[default]`
-- `README.md`
-- `.gitignore` — `.venv/`, `tmp-downloads/`, `node_modules/`
-- Transcript: `658072cc-b251-45c0-937b-d0cc8ca11818`
+- `static/styles.css` — light tokens, Inter, `#3878f0` accent
+- `static/index.html` — logo wordmark, Inter links, favicons (svg link pending remove)
+- `static/logo.png` — brand wordmark (user’s good version)
+- `static/favicon.ico` / `static/favicon.png` — tab / Apple touch (C mark)
+- `README.md` — docs with logo (dirty)
+- `app.py` — serves UI at `:8765` (unchanged this session)
+- Transcript: `c6d7a49a-3b25-4c16-9728-43165bf72a4c`
 
 ## Decisions
 
-- Local only. Do not deploy this as a public downloader (Cloudflare/Vercel cannot run it).
-- `/playlist?list=` = playlist. `/watch?v=` = one video. `/watch?v=&list=` = video in a playlist; default **this video only**. Opt-in **Whole playlist**.
-- Stage merge/scale in temp; mkdir playlist folder as soon as listed; move each finished file.
-- Temp `ytdl-*` deleted in `finally` (success/fail/cancel). Crash leftovers can remain in `/var/folders/…/T/`.
-- Do not default cookies-from-browser (keychain hang).
-- Stop must ack in the UI even if the worker is blocked; kill **our** ffmpeg; do not move the in-progress file.
+- Light theme required (user rejected dark / gold-on-black).
+- Prefer real `logo.png` over hand-made SVG mark + text (SVG looked “weird”).
+- Do not stretch lede full-width; keep ~54ch.
+- Accent = logo blue, not teal/purple CTA.
+- Inter = industry UI font for eye comfort (explicit user ask).
+- Drop `favicon.svg` as redundant; keep ico + png.
 
 ## Constraints
 
-- Personal local use. YouTube ToS: only keep what they are allowed to keep.
-- GitHub: `engmagdy87` / Mohamed Magdy / `mohamed.magdy.abdelhamid@gmail.com`
-- Do not commit `.venv`, secrets, download leftovers
-- Video default vs audio; quality cached
-- Kill leftover process on 8765 if address already in use
-- Shorts `/shorts/…` are videos
+- Personal local tool only; not a public downloader.
+- Only keep videos the user is allowed to keep.
+- User wants brand assets (`logo.png`) used, not substitutes.
+- Do not commit unless asked (uncommitted README/favicon cleanup still pending).
 
 ## Blocked / open
 
-None blocking.
-
-Uncommitted Stop fix not user-tested.
-Finder one-by-one playlist not user-confirmed (screenshot did show 0/6 and a scale log, so listing + per-item path is running).
-Retry failed watch URLs use the folder in **Save to**, not auto the playlist subfolder.
-No startup sweep of leftover `ytdl-*` dirs.
-yt-dlp internal merge not killed by Stop yet.
+None.
 
 ## Next
 
-1. Hard-refresh, run a download, hit **Stop** during “Scaling to …” — expect Stopping… and no new file for that item.
-2. If Stop during `[Merger] Merging formats` still lags, interrupt yt-dlp’s ffmpeg next.
-3. Commit/push the Stop fix when the user asks (not committed now).
+1. Commit uncommitted trio: `README.md`, delete `static/favicon.svg`, `static/index.html` favicon link cleanup.
+2. Hard-refresh `http://127.0.0.1:8765` and confirm logo, Inter, blue Download.
+3. Optional: replace C-mark favicons with a crop of the play mark from `logo.png` if brand consistency is wanted.
