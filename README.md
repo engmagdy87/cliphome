@@ -8,22 +8,40 @@
 
 <p align="center">
   A local video downloader for <b>YouTube</b>, <b>Facebook</b>, and <b>X</b>.<br />
-  Runs on your machine — nothing is uploaded to a website.
+  Runs on your machine. Files never leave your computer — nothing is uploaded to a Cliphome server.
 </p>
 
 <p align="center">
-  <a href="#quick-start"><img src="https://img.shields.io/badge/start-npm%20start-3878f0?style=for-the-badge&labelColor=0b1220" alt="npm start" /></a>
+  <a href="https://github.com/engmagdy87/cliphome/stargazers">
+    <img src="https://img.shields.io/github/stars/engmagdy87/cliphome?style=for-the-badge&label=stars&color=3878f0&labelColor=0b1220" alt="GitHub stars" />
+  </a>
+  <a href="#quick-start">
+    <img src="https://img.shields.io/badge/start-npm%20start-3878f0?style=for-the-badge&labelColor=0b1220" alt="npm start" />
+  </a>
   <img src="https://img.shields.io/badge/python-3.x-10c0f8?style=for-the-badge&labelColor=0b1220" alt="Python" />
   <img src="https://img.shields.io/badge/local_only-127.0.0.1-7c3aed?style=for-the-badge&labelColor=0b1220" alt="Local only" />
+</p>
+
+<!-- Drop a 10–15s screen recording here: docs/demo.gif (paste URL → quality → folder → download) -->
+<p align="center">
+  <img src="docs/demo.gif" alt="Cliphome demo — paste a link, pick quality, save to a local folder" width="900" />
+</p>
+
+<p align="center">
+  <sub><code>Paste → Choose → Download</code></sub>
 </p>
 
 ---
 
 ## Why Cliphome
 
+I got tired of random downloader websites. Ads, popups, fake buttons — then another site the next time.
+
+So I built a small local one.
+
 | | |
 | :--- | :--- |
-| **Yours** | Files save to a folder you choose on this computer |
+| **Local** | Files save directly to a folder you choose |
 | **Simple** | Paste one link or many — no account, no cloud queue |
 | **Flexible** | Best / 1080p / 720p / … and video or audio (MP3) |
 | **Honest** | Personal use only — keep what you are allowed to keep |
@@ -60,12 +78,28 @@ If some links fail (403, login walls, etc.), they appear in a list — copy them
 
 ---
 
+## How it works
+
+```text
+Browser
+   ↓
+Cliphome
+   ↓
+yt-dlp + FFmpeg
+   ↓
+Your local folder
+```
+
+Everything runs locally on your machine.
+
+---
+
 ## Quick start
 
 **You need**
 
-- Python 3  
-- Node (for `npm start`; yt-dlp also uses it for YouTube)  
+- Python 3
+- Node (for `npm start`; yt-dlp also uses it for YouTube)
 - ffmpeg — `brew install ffmpeg`
 
 **Then**
