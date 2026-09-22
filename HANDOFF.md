@@ -2,7 +2,8 @@
 
 ## Goal
 
-Local personal YouTube downloader on this Mac: FastAPI + static UI.
+Local personal video downloader (Cliphome) on this Mac: FastAPI + static UI.
+YouTube, Facebook, and X. GitHub: https://github.com/engmagdy87/cliphome
 Paste video(s) or a playlist, pick an OS folder, cache quality, video default vs audio.
 Stay a local tool; GitHub holds the code.
 
@@ -20,7 +21,7 @@ Batch to `/Users/mm/YT Videos`: 14 ok, 1 fail
 `https://www.youtube.com/watch?v=wbAnah83rbo` HTTP 403 format 136+251.
 
 GitHub (on origin):
-- https://github.com/engmagdy87/youtube-downloader **public**
+- https://github.com/engmagdy87/cliphome **public**
 - `21d65f0` initial; `680bf3c` first HANDOFF; `bb04998` playlist incremental + URL detect
 - No secrets in git
 
@@ -62,7 +63,6 @@ Seam: yt-dlp’s **own** merge ffmpeg (`[Merger] Merging formats`) is still `sub
 - `requirements.txt` — fastapi, uvicorn, `yt-dlp[default]`
 - `README.md`
 - `.gitignore` — `.venv/`, `tmp-downloads/`, `node_modules/`
-- `BACKEND-REFERENCE.md` / `LEARNING.md`
 - Transcript: `658072cc-b251-45c0-937b-d0cc8ca11818`
 
 ## Decisions

@@ -375,7 +375,7 @@ def upscale_if_needed(
         {
             "type": "log",
             "message": (
-                f"YouTube gave {width}x{height}. Scaling to {target_w}x{target_h} "
+                f"Source gave {width}x{height}. Scaling to {target_w}x{target_h} "
                 "so it fills the player the way the website does."
             ),
         }

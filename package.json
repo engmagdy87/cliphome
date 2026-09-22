@@ -1,8 +1,9 @@
 {
-  "name": "youtube-downloader",
+  "name": "cliphome",
   "private": true,
   "scripts": {
     "start": ".venv/bin/python app.py",
+    "dev": ".venv/bin/python app.py --reload",
     "setup": "python3 -m venv .venv && .venv/bin/pip install -r requirements.txt"
   }
 }

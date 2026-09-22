@@ -86,7 +86,12 @@ function classifyUrl(raw) {
     const href = raw.includes("://") ? raw : `https://${raw}`;
     const parsed = new URL(href);
     const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
-    if (!host.endsWith("youtube.com") && host !== "youtu.be") return "other";
+    const youtube = host.endsWith("youtube.com") || host === "youtu.be";
+    const facebook =
+      host.endsWith("facebook.com") || host === "fb.watch" || host === "fb.com";
+    const twitter = host.endsWith("twitter.com") || host === "x.com" || host.endsWith(".x.com");
+    if (!youtube && !facebook && !twitter) return "other";
+    if (!youtube) return "video";
     const path = parsed.pathname.toLowerCase();
     const list = parsed.searchParams.get("list");
     if (path.includes("playlist") && list) return "playlist";
@@ -100,7 +105,7 @@ function classifyUrl(raw) {
 function refreshUrlKind() {
   const parts = splitUrls(urlsEl.value);
   if (!parts.length) {
-    urlKindEl.textContent = "Paste a YouTube link and I’ll say if it’s a video or a playlist.";
+    urlKindEl.textContent = "Paste a YouTube, Facebook, or X (Twitter) link.";
     playlistScopeEl.hidden = true;
     return;
   }
@@ -309,7 +314,7 @@ async function startDownload() {
   const directory = directoryEl.value.trim();
   if (!urls) {
     showStatus();
-    setLine("Paste at least one YouTube URL.", "bad");
+    setLine("Paste at least one YouTube, Facebook, or X (Twitter) URL.", "bad");
     return;
   }
   if (!directory) {

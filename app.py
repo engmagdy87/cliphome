@@ -28,7 +28,7 @@ HOST = "127.0.0.1"
 PORT = 8765
 APP_URL = f"http://{HOST}:{PORT}"
 
-app = FastAPI(title="YouTube Downloader")
+app = FastAPI(title="Cliphome")
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 
@@ -97,10 +97,13 @@ async def start_download(body: DownloadRequest) -> dict[str, str]:
     if invalid:
         raise HTTPException(
             status_code=400,
-            detail=f"Not a YouTube URL: {', '.join(invalid[:3])}",
+            detail=f"Not a supported URL: {', '.join(invalid[:3])}",
         )
     if not valid:
-        raise HTTPException(status_code=400, detail="Paste at least one YouTube URL.")
+        raise HTTPException(
+            status_code=400,
+            detail="Paste at least one YouTube, Facebook, or X (Twitter) URL.",
+        )
 
     try:
         directory = resolve_writable_dir(body.directory)
@@ -228,6 +231,7 @@ def open_browser_when_ready() -> None:
 
 
 if __name__ == "__main__":
+    import sys
     import threading
 
     import uvicorn
@@ -237,4 +241,4 @@ if __name__ == "__main__":
     if not js_runtimes():
         print("Warning: no JS runtime found. YouTube downloads need Node 22+ or Deno.")
     threading.Thread(target=open_browser_when_ready, daemon=True).start()
-    uvicorn.run("app:app", host=HOST, port=PORT, reload=True)
+    uvicorn.run("app:app", host=HOST, port=PORT, reload="--reload" in sys.argv)

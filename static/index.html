@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>YouTube Downloader</title>
+    <title>Cliphome</title>
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/static/favicon.svg" />
     <link rel="stylesheet" href="/static/styles.css" />
@@ -15,11 +15,11 @@
           <img class="logo" src="/static/favicon.svg" width="40" height="40" alt="" />
           <div>
             <p class="eyebrow">Local machine</p>
-            <h1>YouTube Downloader</h1>
+            <h1>Cliphome</h1>
           </div>
         </div>
         <p class="lede">
-          Paste one video, a playlist, or a bunch of URLs. Files are written to a folder you pick on this computer.
+            Paste a YouTube, Facebook, or X (Twitter) video. Playlists work for YouTube. Files land in a folder you pick on this computer.
         </p>
       </header>
 
@@ -28,9 +28,9 @@
         <textarea
           id="urls"
           rows="7"
-          placeholder="https://www.youtube.com/watch?v=…&#10;https://www.youtube.com/playlist?list=…&#10;https://youtu.be/…"
+          placeholder="https://www.youtube.com/watch?v=…&#10;https://www.facebook.com/watch/?v=…&#10;https://x.com/user/status/…"
         ></textarea>
-        <p class="hint" id="url-kind">Paste a YouTube link and I’ll say if it’s a video or a playlist.</p>
+        <p class="hint" id="url-kind">Paste a YouTube, Facebook, or X (Twitter) link.</p>
         <div class="field playlist-scope" id="playlist-scope" hidden>
           <span class="label">Watch link includes a playlist</span>
           <div class="seg" role="group" aria-label="Playlist scope">
