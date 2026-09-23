@@ -200,6 +200,28 @@ def _playlist_dest(directory: Path, info: dict[str, Any]) -> Path:
     return folder
 
 
+def _playlist_title(info: dict[str, Any]) -> str:
+    return str(info.get("title") or info.get("playlist_title") or info.get("id") or "Playlist")
+
+
+def _playlist_duration_seconds(info: dict[str, Any]) -> tuple[int | None, bool]:
+    """Sum flat-entry durations. Returns (total_or_None, all_entries_had_duration)."""
+    total = 0
+    known = 0
+    entries = 0
+    for entry in info.get("entries") or []:
+        if not entry:
+            continue
+        entries += 1
+        duration = entry.get("duration")
+        if isinstance(duration, (int, float)) and duration > 0:
+            total += int(duration)
+            known += 1
+    if known == 0:
+        return None, False
+    return total, known == entries
+
+
 def _video_url_from_entry(entry: dict[str, Any] | None) -> str | None:
     if not entry:
         return None
@@ -265,6 +287,18 @@ def _expand_jobs(
         try:
             info, videos = _list_playlist(url, runtimes, on_event, should_cancel)
             dest = _playlist_dest(directory, info)
+            title = _playlist_title(info)
+            duration_seconds, duration_complete = _playlist_duration_seconds(info)
+            on_event(
+                {
+                    "type": "playlist_info",
+                    "title": title,
+                    "video_count": len(videos),
+                    "duration_seconds": duration_seconds,
+                    "duration_complete": duration_complete,
+                    "folder": str(dest),
+                }
+            )
             on_event({"type": "log", "message": f"Playlist folder: {dest}"})
             if not videos:
                 raise RuntimeError("Playlist has no videos.")

@@ -26,6 +26,8 @@ const urlKindEl = document.querySelector("#url-kind");
 const playlistScopeEl = document.querySelector("#playlist-scope");
 const playlistScopeButtons = [...document.querySelectorAll("[data-playlist-scope]")];
 const mediaButtons = [...document.querySelectorAll("[data-media]")];
+const playlistsEl = document.querySelector("#playlists");
+const playlistListEl = document.querySelector("#playlist-list");
 
 let mediaType = "video";
 let playlistScope = "video";
@@ -153,6 +155,64 @@ function setBusy(busy) {
 
 function showStatus() {
   statusEl.hidden = false;
+}
+
+function clearPlaylists() {
+  playlistListEl.innerHTML = "";
+  playlistsEl.hidden = true;
+}
+
+function formatDuration(seconds, { complete = true } = {}) {
+  if (seconds == null || seconds < 0) return "Unknown";
+  const total = Math.round(seconds);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  let text;
+  if (h > 0) text = `${h}h ${m}m`;
+  else if (m > 0) text = `${m}m ${s}s`;
+  else text = `${s}s`;
+  return complete ? text : `~${text}`;
+}
+
+function addPlaylistInfo(event) {
+  const title = event.title || "Playlist";
+  const count = event.video_count || 0;
+  const time = formatDuration(event.duration_seconds, {
+    complete: event.duration_complete !== false,
+  });
+  const row = document.createElement("li");
+  row.className = "playlist-row";
+  row.innerHTML = `
+    <div class="playlist-fields">
+      <div class="playlist-field playlist-field-name">
+        <span class="playlist-label">Playlist Name</span>
+        <span class="playlist-name" title="${escapeAttr(title)}">${escapeHtml(title)}</span>
+      </div>
+      <div class="playlist-field playlist-field-stat">
+        <span class="playlist-label">Videos</span>
+        <span class="playlist-stat">${count}</span>
+      </div>
+      <div class="playlist-field playlist-field-stat">
+        <span class="playlist-label">Total Playlist Time</span>
+        <span class="playlist-stat">${escapeHtml(time)}</span>
+      </div>
+    </div>
+  `;
+  playlistListEl.appendChild(row);
+  playlistsEl.hidden = false;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replaceAll("'", "&#39;");
 }
 
 function setBar(percent) {
@@ -330,6 +390,7 @@ async function startDownload() {
 
   showStatus();
   logEl.textContent = "";
+  clearPlaylists();
   batchTotal = 0;
   succeeded = 0;
   failed = 0;
@@ -374,6 +435,8 @@ function listen(id) {
     const event = JSON.parse(message.data);
     if (event.type === "log") {
       log(event.message);
+    } else if (event.type === "playlist_info") {
+      addPlaylistInfo(event);
     } else if (event.type === "batch") {
       batchTotal = event.total || 0;
       succeeded = event.succeeded || 0;

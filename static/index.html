@@ -13,7 +13,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=light6" />
+    <link rel="stylesheet" href="/static/styles.css?v=playlists2" />
   </head>
   <body>
     <div class="shell">
@@ -80,6 +80,10 @@
         </div>
 
         <section id="status" class="status" hidden>
+          <section id="playlists" class="playlists" hidden>
+            <h2 class="playlists-title">Playlists</h2>
+            <ul id="playlist-list" class="playlist-list"></ul>
+          </section>
           <div class="meter" aria-hidden="true"><span id="bar"></span></div>
           <p id="tally" class="tally">Downloaded 0/0</p>
           <p id="status-line" class="status-line">Ready</p>
